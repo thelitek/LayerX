@@ -89,6 +89,15 @@ xcodebuild -project LayerX.xcodeproj -target LayerX -configuration Release SYMRO
 
 Every push is built by GitHub Actions; the unsigned `LayerX.app` is attached to the workflow run as an artifact.
 
+### Releasing
+
+A build of `master` is published as a GitHub release, with `LayerX-vX.Y.Z.zip` attached, in either of two ways:
+
+- On GitHub: **Actions ▸ Build ▸ Run workflow**, on `master`, with a version such as `1.3.0`.
+- From a terminal: `git tag v1.3.0 && git push origin v1.3.0` on a commit that is on `master`.
+
+The version is stamped into the app. Tags that are not on `master` are refused.
+
 # Contact
 
 Any suggestions are welcome. Find me at [@yuhua_twit](https://twitter.com/yuhua_twit)
