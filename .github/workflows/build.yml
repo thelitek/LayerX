@@ -1,0 +1,39 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project LayerX.xcodeproj \
+            -target LayerX \
+            -configuration Release \
+            SYMROOT="$PWD/build" \
+            CODE_SIGN_IDENTITY=- \
+            build
+
+      - name: Package
+        run: ditto -c -k --keepParent build/Release/LayerX.app LayerX.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LayerX
+          path: LayerX.zip
+          if-no-files-found: error
