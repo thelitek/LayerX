@@ -15,6 +15,8 @@ Support Mac OS X 10.10 or later.
 - [x] Adjust transparency  
 - [x] Lock images
 - [X] Aspect ratio scaling
+- [x] Full-screen background with configurable color and opacity
+- [x] Hold-to-show global shortcut
 
 # Keyboard Shortcuts
 
@@ -58,12 +60,34 @@ Support Mac OS X 10.10 or later.
 |`⌘ T`| Make window always on top.|
 |`⌘ A`| Keep window on all spaces.|
 
+|`⌘ B`| Toggle the full-screen background.|
+
+### Preferences (`⌘ ,`)
+
+| Setting | Effect |
+|:---|:---|
+| Background | Covers the whole screen the image is on, behind the image. Clicks pass through it. |
+| Color / Opacity | Color and transparency of that background. |
+| Hold shortcut | A system-wide key combination. The overlay is shown for as long as it is held and hidden when it is released, without taking focus from the app in use. Needs at least one modifier (or a function key). |
+
+After the shortcut has hidden the overlay, click the Dock icon or choose **Window ▸ Show Overlay** to bring it back for editing.
+
 # Mouse events
 
 | Event | Action |
 |:---|:---|
 | Scroll up on image | Reduce transparency. |
 | Scroll down on image | Increase transparency. |
+
+# Building
+
+Open `LayerX.xcodeproj` in Xcode, or from a terminal:
+
+```sh
+xcodebuild -project LayerX.xcodeproj -target LayerX -configuration Release SYMROOT="$PWD/build" build
+```
+
+Every push is built by GitHub Actions; the unsigned `LayerX.app` is attached to the workflow run as an artifact.
 
 # Contact
 

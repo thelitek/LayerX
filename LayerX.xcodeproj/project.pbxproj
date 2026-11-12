@@ -13,6 +13,10 @@
 		8C09F9FC1BDE2E5C00DD457E /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8C09F9FA1BDE2E5C00DD457E /* Main.storyboard */; };
 		8C09FA041BDE324500DD457E /* MCDragAndDropImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C09FA031BDE324500DD457E /* MCDragAndDropImageView.swift */; };
 		8C09FA0C1BDF5F7300DD457E /* MCWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C09FA0B1BDF5F7300DD457E /* MCWindow.swift */; };
+		8CA100022F00000000DD457E /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CA100012F00000000DD457E /* Settings.swift */; };
+		8CA200022F00000000DD457E /* BackdropWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CA200012F00000000DD457E /* BackdropWindow.swift */; };
+		8CA300022F00000000DD457E /* HoldHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CA300012F00000000DD457E /* HoldHotKey.swift */; };
+		8CA400022F00000000DD457E /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CA400012F00000000DD457E /* PreferencesWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +28,10 @@
 		8C09F9FD1BDE2E5C00DD457E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8C09FA031BDE324500DD457E /* MCDragAndDropImageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MCDragAndDropImageView.swift; sourceTree = "<group>"; };
 		8C09FA0B1BDF5F7300DD457E /* MCWindow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MCWindow.swift; sourceTree = "<group>"; };
+		8CA100012F00000000DD457E /* Settings.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		8CA200012F00000000DD457E /* BackdropWindow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackdropWindow.swift; sourceTree = "<group>"; };
+		8CA300012F00000000DD457E /* HoldHotKey.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HoldHotKey.swift; sourceTree = "<group>"; };
+		8CA400012F00000000DD457E /* PreferencesWindowController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,6 +68,10 @@
 				8C09FA0B1BDF5F7300DD457E /* MCWindow.swift */,
 				8C09F9F61BDE2E5C00DD457E /* ViewController.swift */,
 				8C09FA031BDE324500DD457E /* MCDragAndDropImageView.swift */,
+				8CA100012F00000000DD457E /* Settings.swift */,
+				8CA200012F00000000DD457E /* BackdropWindow.swift */,
+				8CA300012F00000000DD457E /* HoldHotKey.swift */,
+				8CA400012F00000000DD457E /* PreferencesWindowController.swift */,
 				8C09F9F81BDE2E5C00DD457E /* Assets.xcassets */,
 				8C09F9FA1BDE2E5C00DD457E /* Main.storyboard */,
 				8C09F9FD1BDE2E5C00DD457E /* Info.plist */,
@@ -142,6 +154,10 @@
 				8C09FA0C1BDF5F7300DD457E /* MCWindow.swift in Sources */,
 				8C09F9F51BDE2E5C00DD457E /* AppDelegate.swift in Sources */,
 				8C09FA041BDE324500DD457E /* MCDragAndDropImageView.swift in Sources */,
+				8CA100022F00000000DD457E /* Settings.swift in Sources */,
+				8CA200022F00000000DD457E /* BackdropWindow.swift in Sources */,
+				8CA300022F00000000DD457E /* HoldHotKey.swift in Sources */,
+				8CA400022F00000000DD457E /* PreferencesWindowController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

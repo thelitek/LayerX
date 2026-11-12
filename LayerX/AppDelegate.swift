@@ -27,11 +27,143 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 		didSet { viewController.sizeTextField.isHidden = isSizeHidden }
 	}
 
+	private let backdrop = BackdropWindow()
+	private let holdHotKey = HoldHotKey()
+	private var preferences: PreferencesWindowController?
+
+	/// True while the hold-to-show shortcut is pressed.
+	private var isHolding = false
+
 	func applicationDidFinishLaunching(_ aNotification: Notification) {
-		if let window = NSApp.windows.first as? MCWIndow {
+		Settings.registerDefaults()
+
+		if let window = NSApp.windows.first(where: { $0 is MCWIndow }) as? MCWIndow {
 			window.fitsWithSize(defaultSize)
-			window.collectionBehavior = [.managed, .moveToActiveSpace]
 			self.window = window
+			applyWindowPresentation()
+		}
+
+		let center = NotificationCenter.default
+		for name in [NSWindow.didChangeScreenNotification, NSWindow.didBecomeKeyNotification] {
+			center.addObserver(self, selector: #selector(syncBackdrop), name: name, object: window)
+		}
+		center.addObserver(self, selector: #selector(syncBackdrop), name: NSApplication.didChangeScreenParametersNotification, object: nil)
+		center.addObserver(self, selector: #selector(syncBackdrop), name: NSApplication.didBecomeActiveNotification, object: nil)
+
+		holdHotKey.onPress = { [weak self] in self?.holdBegan() }
+		holdHotKey.onRelease = { [weak self] in self?.holdEnded() }
+		if let shortcut = Settings.holdShortcut {
+			holdHotKey.register(shortcut)
+		}
+
+		syncBackdrop()
+	}
+
+	/// Clicking the Dock icon brings back an overlay hidden by the shortcut.
+	func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+		showOverlay(nil)
+		return false
+	}
+}
+
+// MARK: - Overlay presentation
+
+extension AppDelegate {
+
+	/// Derives the window level and Spaces behaviour from the current state.
+	/// While the shortcut is held the overlay floats above everything, on
+	/// whichever Space (including full-screen apps) is active.
+	private func applyWindowPresentation() {
+		let elevated = onTop || locked || isHolding
+		let levelKey: CGWindowLevelKey = elevated ? .maximumWindow : .normalWindow
+		window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(levelKey)))
+
+		if isHolding {
+			window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+		} else if allSpaces {
+			window.collectionBehavior = [.canJoinAllSpaces]
+		} else {
+			window.collectionBehavior = [.managed, .moveToActiveSpace]
+		}
+
+		syncBackdrop()
+	}
+
+	@objc private func syncBackdrop() {
+		guard let window = window else { return }
+		backdrop.sync(with: window)
+	}
+
+	private func holdBegan() {
+		isHolding = true
+		applyWindowPresentation()
+		// Show without activating LayerX, so the app in use keeps focus.
+		window.orderFrontRegardless()
+		syncBackdrop()
+	}
+
+	private func holdEnded() {
+		isHolding = false
+		window.orderOut(nil)
+		applyWindowPresentation()
+	}
+
+	@IBAction func showOverlay(_ sender: AnyObject?) {
+		window.makeKeyAndOrderFront(nil)
+		syncBackdrop()
+	}
+
+	@IBAction func toggleBackground(_ sender: AnyObject?) {
+		Settings.backgroundEnabled = !Settings.backgroundEnabled
+		preferences?.reload()
+		syncBackdrop()
+	}
+
+	@IBAction func showPreferences(_ sender: AnyObject?) {
+		if preferences == nil {
+			let controller = PreferencesWindowController()
+			controller.delegate = self
+			preferences = controller
+		}
+		preferences?.reload()
+		NSApp.activate(ignoringOtherApps: true)
+		preferences?.showWindow(nil)
+		preferences?.window?.makeKeyAndOrderFront(nil)
+	}
+}
+
+// MARK: - PreferencesDelegate
+
+extension AppDelegate: PreferencesDelegate {
+
+	func preferencesDidChangeBackground() {
+		syncBackdrop()
+	}
+
+	func preferencesDidChangeShortcut(_ shortcut: Shortcut?) -> Bool {
+		guard let shortcut = shortcut else {
+			holdHotKey.unregister()
+			Settings.holdShortcut = nil
+			return true
+		}
+
+		guard holdHotKey.register(shortcut) else {
+			// Keep the previous shortcut working.
+			if let previous = Settings.holdShortcut {
+				holdHotKey.register(previous)
+			}
+			return false
+		}
+
+		Settings.holdShortcut = shortcut
+		return true
+	}
+
+	func preferencesIsRecordingShortcut(_ recording: Bool) {
+		if recording {
+			holdHotKey.unregister()
+		} else if let shortcut = Settings.holdShortcut {
+			holdHotKey.register(shortcut)
 		}
 	}
 }
@@ -132,13 +264,12 @@ extension AppDelegate {
 			menuItem.title  = "Unlock"
 			window.isMovable = false
 			window.ignoresMouseEvents = true
-			window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)))
 		} else {
 			menuItem.title  = "Lock"
 			window.isMovable = true
 			window.ignoresMouseEvents = false
-			window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.normalWindow)))
 		}
+		applyWindowPresentation()
 
 		viewController.lockIconImageView.isHidden = window.isMovable || isLockIconHiddenWhileLocked
 	}
@@ -148,11 +279,10 @@ extension AppDelegate {
 		onTop = !onTop
 		if onTop {
 			menuItem.title = "Don't keep on top"
-			window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)))
 		} else if !locked {
 			menuItem.title = "Keep on top"
-			window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.normalWindow)))
 		}
+		applyWindowPresentation()
 	}
 	
 	@IBAction func toggleLockIconVisibility(_ sender: AnyObject) {
@@ -191,14 +321,23 @@ extension AppDelegate {
 		allSpaces = !allSpaces
 		if allSpaces {
 			menuItem.title = "Keep on this space"
-			window.collectionBehavior = [.canJoinAllSpaces]
 		} else {
 			menuItem.title = "Keep on all spaces"
-			window.collectionBehavior = [.managed, .moveToActiveSpace]
 		}
+		applyWindowPresentation()
 	}
 
 	func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+		switch menuItem.action {
+		case #selector(showPreferences(_:)), #selector(showOverlay(_:)):
+			return true
+		case #selector(toggleBackground(_:)):
+			menuItem.state = Settings.backgroundEnabled ? .on : .off
+			return true
+		default:
+			break
+		}
+
 		return viewController.imageView.image != nil
 	}
 }
