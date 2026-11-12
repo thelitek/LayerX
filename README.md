@@ -68,7 +68,7 @@ Support Mac OS X 10.10 or later.
 |:---|:---|
 | Background | Covers the whole screen the image is on, behind the image. Clicks pass through it. |
 | Color / Opacity | Color and transparency of that background. |
-| Hold shortcut | A system-wide key combination. The overlay is shown for as long as it is held and hidden when it is released, without taking focus from the app in use. Needs at least one modifier (or a function key). |
+| Hold shortcut | A system-wide key combination. The overlay is shown for as long as it is held and hidden when it is released, without taking focus from the app in use. Either a key with at least one modifier, a function key, or modifiers alone (press and release just the modifiers while recording). Modifiers alone must be held for 0.2 s with no other key or click, so ordinary shortcuts do not trigger it; this is the option that works with tap-hold / home-row-mod keyboards. |
 
 After the shortcut has hidden the overlay, click the Dock icon or choose **Window ▸ Show Overlay** to bring it back for editing.
 

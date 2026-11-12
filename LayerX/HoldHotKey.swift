@@ -22,6 +22,15 @@ final class HoldHotKey {
 	private var handlerRef: EventHandlerRef?
 	private var watchdog: Timer?
 
+	// Modifier-only shortcuts
+	private var modifierTimer: Timer?
+	private var modifiersEngagedAt: TimeInterval?
+	private var modifiersDisqualified = false
+
+	/// How long the modifiers must be held on their own before the hold
+	/// starts, so that ordinary shortcuts using them do not trigger it.
+	static let modifierHoldDelay: TimeInterval = 0.2
+
 	private static let signature: OSType = 0x4C59_5258 // "LYRX"
 
 	init() {
@@ -56,6 +65,13 @@ final class HoldHotKey {
 	func register(_ shortcut: Shortcut) -> Bool {
 		unregister()
 
+		if shortcut.isModifierOnly {
+			guard shortcut.carbonModifiers != 0 else { return false }
+			self.shortcut = shortcut
+			startModifierTimer()
+			return true
+		}
+
 		let id = EventHotKeyID(signature: HoldHotKey.signature, id: 1)
 		let status = RegisterEventHotKey(
 			UInt32(shortcut.keyCode),
@@ -80,8 +96,71 @@ final class HoldHotKey {
 			UnregisterEventHotKey(hotKeyRef)
 		}
 		hotKeyRef = nil
+		modifierTimer?.invalidate()
+		modifierTimer = nil
+		modifiersEngagedAt = nil
+		modifiersDisqualified = false
 		shortcut = nil
 		released()
+	}
+
+	// MARK: Modifier-only shortcuts
+
+	/// There is no hot key API for bare modifiers, so their state is polled.
+	/// Reading the session's modifier state needs no Accessibility permission.
+	private func startModifierTimer() {
+		let timer = Timer(timeInterval: 0.04, repeats: true) { [weak self] _ in
+			self?.checkModifiers()
+		}
+		timer.tolerance = 0.01
+		RunLoop.main.add(timer, forMode: .common)
+		modifierTimer = timer
+	}
+
+	private func checkModifiers() {
+		guard let shortcut = shortcut else { return }
+
+		let allModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
+		let required = Shortcut.cgFlags(forCarbonModifiers: shortcut.carbonModifiers)
+		let current = CGEventSource.flagsState(.combinedSessionState).intersection(allModifiers)
+
+		if isHeld {
+			// Extra modifiers or keys do not end the hold; letting go does.
+			if !current.contains(required) {
+				released()
+			}
+			return
+		}
+
+		// Starting requires exactly these modifiers, so ⌃⌥⌘ does not trigger ⌃⌥.
+		guard current == required else {
+			modifiersEngagedAt = nil
+			modifiersDisqualified = false
+			return
+		}
+
+		let now = ProcessInfo.processInfo.systemUptime
+		guard let engagedAt = modifiersEngagedAt else {
+			modifiersEngagedAt = now
+			return
+		}
+		guard !modifiersDisqualified else { return }
+
+		// A key or click since the modifiers went down means they are being
+		// used for something else (⌘C, ⌘-click…): stay hidden until released.
+		let elapsed = now - engagedAt
+		let inputTypes: [CGEventType] = [.keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown]
+		let usedForSomethingElse = inputTypes.contains {
+			CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) < elapsed
+		}
+		if usedForSomethingElse {
+			modifiersDisqualified = true
+			return
+		}
+
+		if elapsed >= HoldHotKey.modifierHoldDelay {
+			pressed()
+		}
 	}
 
 	// MARK: Press / release
@@ -89,7 +168,9 @@ final class HoldHotKey {
 	private func pressed() {
 		guard !isHeld else { return }
 		isHeld = true
-		startWatchdog()
+		if shortcut?.isModifierOnly == false {
+			startWatchdog()
+		}
 		onPress?()
 	}
 
@@ -132,6 +213,26 @@ final class HoldHotKey {
 
 extension Shortcut {
 
+	static let noKey = -1
+
+	var isModifierOnly: Bool { keyCode < 0 }
+
+	/// A shortcut made of modifiers alone, or nil if `flags` has none.
+	init?(modifiersOnly flags: NSEvent.ModifierFlags) {
+		let symbols = Shortcut.symbols(for: flags)
+		guard !symbols.isEmpty else { return nil }
+		self.init(keyCode: Shortcut.noKey, carbonModifiers: Shortcut.carbonModifiers(for: flags), display: symbols)
+	}
+
+	static func symbols(for flags: NSEvent.ModifierFlags) -> String {
+		var result = ""
+		if flags.contains(.control) { result += "⌃" }
+		if flags.contains(.option) { result += "⌥" }
+		if flags.contains(.shift) { result += "⇧" }
+		if flags.contains(.command) { result += "⌘" }
+		return result
+	}
+
 	static func carbonModifiers(for flags: NSEvent.ModifierFlags) -> Int {
 		var result = 0
 		if flags.contains(.command) { result |= cmdKey }
@@ -159,11 +260,7 @@ extension Shortcut {
 
 		guard !flags.isEmpty || isFunctionKey else { return nil }
 
-		var display = ""
-		if flags.contains(.control) { display += "⌃" }
-		if flags.contains(.option) { display += "⌥" }
-		if flags.contains(.shift) { display += "⇧" }
-		if flags.contains(.command) { display += "⌘" }
+		var display = Shortcut.symbols(for: flags)
 
 		if let name = Shortcut.functionKeyNames[keyCode] ?? Shortcut.specialKeyNames[keyCode] {
 			display += name

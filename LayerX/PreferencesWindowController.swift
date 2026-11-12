@@ -29,7 +29,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
 	private let clearButton = NSButton(title: "Clear", target: nil, action: nil)
 	private let statusLabel = NSTextField(wrappingLabelWithString: "")
 
-	private static let hint = "Hold the shortcut to show the overlay from any app. Releasing it hides the overlay again."
+	private static let hint = "Hold the shortcut to show the overlay from any app; releasing it hides the overlay again. To use modifiers alone (e.g. ⌃⌥), press and release just those while recording."
 
 	init() {
 		let window = NSWindow(
@@ -196,6 +196,8 @@ final class ShortcutRecorderButton: NSButton {
 	}
 
 	private var monitor: Any?
+	/// Modifiers pressed so far while recording, with no other key yet.
+	private var pendingModifiers: NSEvent.ModifierFlags = []
 	private var isRecording: Bool { monitor != nil }
 
 	init() {
@@ -219,7 +221,7 @@ final class ShortcutRecorderButton: NSButton {
 
 	private func updateTitle() {
 		if isRecording {
-			title = "Type shortcut…"
+			title = pendingModifiers.isEmpty ? "Type shortcut…" : Shortcut.symbols(for: pendingModifiers)
 		} else {
 			title = shortcut?.display ?? "Click to record"
 		}
@@ -239,8 +241,13 @@ final class ShortcutRecorderButton: NSButton {
 		onRecordingChanged?(true)
 		// A local monitor sees the event before menus do, so combinations such
 		// as ⌘L are captured instead of triggering their menu item.
-		monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+		pendingModifiers = []
+		monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
 			guard let self = self else { return event }
+			if event.type == .flagsChanged {
+				self.handleModifiers(event)
+				return event
+			}
 			self.handle(event)
 			return nil
 		}
@@ -251,8 +258,25 @@ final class ShortcutRecorderButton: NSButton {
 		guard let monitor = monitor else { return }
 		NSEvent.removeMonitor(monitor)
 		self.monitor = nil
+		pendingModifiers = []
 		updateTitle()
 		onRecordingChanged?(false)
+	}
+
+	/// Modifiers pressed and then all released, with no key in between,
+	/// record a modifier-only shortcut.
+	private func handleModifiers(_ event: NSEvent) {
+		let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
+
+		if !flags.isEmpty {
+			pendingModifiers.formUnion(flags)
+			updateTitle()
+			return
+		}
+
+		guard let shortcut = Shortcut(modifiersOnly: pendingModifiers) else { return }
+		cancelRecording()
+		onChange?(shortcut)
 	}
 
 	private func handle(_ event: NSEvent) {

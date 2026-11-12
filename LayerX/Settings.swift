@@ -9,6 +9,7 @@ import Cocoa
 
 /// A global key combination: a virtual key code plus Carbon modifier flags.
 struct Shortcut: Equatable {
+	/// `Shortcut.noKey` for a modifier-only shortcut.
 	var keyCode: Int
 	var carbonModifiers: Int
 	/// Human-readable form, e.g. "⌃⌥Space".
